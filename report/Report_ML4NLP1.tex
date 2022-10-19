@@ -79,7 +79,7 @@
 %	ABSTRACT
 %----------------------------------------------------------------------------------------
 
-\Abstract{Classifying Language is an essential component of almost every Natural Language Processing (NLP) pipeline. Working with mulitilingual data often requires Machine Translation (MT) as a preprocessing step. Some Libraries for MT in Python and R do not provide automatic language detection, which poses an issue if, exampli gratia, one works with a corpus containing documents in dozens of different languages, as appears in scraped twitter data. In this paper, we describe our findings of a machine learning approach to automatically detect languages. In particular we trained our models directly on twitter data, which might be an advantage over existing models when working with this type of data. This paper is not meant to be an academic paper, but rather an informal description of our project. We will outline our preprocessing, and detail our models. In particular we trained a Logistic Regression Model, which serves as a baseline. We compare this to our second model, which is of deep neural nature. We find that the Neural Net outperforms the baseline model by X\%. }
+\Abstract{Classifying Language is an essential component of almost every Natural Language Processing (NLP) pipeline. Working with mulitilingual data often requires Machine Translation (MT) as a preprocessing step. Some Libraries for MT in Python and R do not provide automatic language detection, which poses an issue if, exampli gratia, one works with a corpus containing documents in dozens of different languages, as appears in scraped twitter data. In this paper, we describe our findings of a machine learning approach to automatically detect languages. In particular we trained our models directly on twitter data, which might be an advantage over existing models when working with this type of data. This paper is not meant to be an academic paper, but rather an informal description of our project. We will outline our preprocessing, and detail our models. In particular we trained a Logistic Regression Model, which serves as a baseline. We compare this to our second model, which is of deep neural nature. We find that the Logistic Regression Model outperformed the Neural Net by about 50\%. These results are not expected to be robust as we had to optimize for computational workload. }
 
 %----------------------------------------------------------------------------------------
 
@@ -196,7 +196,7 @@ This procedure was packed inside a Python Object to simplify the application. Th
 
 \subsection{Feature Engineering}
 
-"Feature engineering is one of the most important steps in machine learning. It is the process of using domain knowledge of the data to create features that make machine learning algorithms work." (https://www.analyticsvidhya.com/blog/2021/04/\newline a-guide-to-feature-engineering-in-nlp/). We vectorized the cleaned and augmented data set using sklearn CountVectorizer. We also included the Term Frequency-Inverse Document Frequency (TFIDF) metric so that our machine learning models could better detect the variations in meaning between different tweets. For this, we used sklearn TfidfTransformer. 
+"Feature engineering is one of the most important steps in machine learning. It is the process of using domain knowledge of the data to create features that make machine learning algorithms work." (https://www.analyticsvidhya.com/blog/2021/04/\newline a-guide-to-feature-engineering-in-nlp/). We vectorized the cleaned and augmented data set using sklearn CountVectorizer. We also included the Term Frequency-Inverse Document Frequency (TFIDF) metric so that our machine learning models could better detect the variations in meaning between different tweets. For this, we used sklearn TfidfTransformer. To reduce Training Time we also sampled down the number of predictors to 50000 using sklearn SelectKBest with a chi squared test
 
 Furthermore an additional feature was added: We hypothesized that the mean length of tweets of different languages might vary, as some languages have shorter overall mean word length than others. For that purpose we created our own sklearn class and added it to the training pipeline.
 
@@ -213,7 +213,7 @@ We used Repeated K-Fold Cross Validation (RCV) to get robust estimates of the mo
 
 \paragraph{Pipeline Training} We used Pipeline from sklearn to train our models. This is helpful as we wanted to tune the hyper-parameters of the CountVectorizer as well. Note however that we did not add our custom preprocessing function to the pipeline (which could be done with FunctionTransformer() from sklearn). We believe that this would lead to overhead, since it has no hyper-parameters to estimate. By tuning the hyper-parameters of the pipeline, this function would be recomputed with every possible combination of the hyper-parameter grid. By leaving it out of the pipeline this function has a runtime of $O(1)$, by including it, it would have a runtime of $O(\prod\limits_{i = 1}^{n} m_{i,\theta})$, with $ m_i \in \mathbb{N} > 0$ being the number of possible specifications of hyper-parameter $\theta_i$.
 
-\paragraph{Hyper-parameter Tuning}For hyper-parameter-tuning we used GridSearchCV from sklearn. We allowed for the following parameters to vary:
+\paragraph{Hyper-parameter Tuning}For hyper-parameter-tuning we used GridSearchCV from sklearn using three-fold cross validation. We allowed for the following parameters to vary:
 \begin{table}[hbt]
 	\caption{Table of possible hyper-parameters}
 	\centering
@@ -222,13 +222,12 @@ We used Repeated K-Fold Cross Validation (RCV) to get robust estimates of the mo
 		 Function & Parameter & Allowed \\
 		\midrule
 		CountVectorizer & ngram\_range & $(1,1), (1,2)$ \\
-		CountVectorizer & ngram\_range & $(1,3), (1,4)$ \\
 		CountVectorizer & analyzer & $"word", "char"$ \\
-		CountVectorizer & analyzer & $"char_wb"$ \\
-		LogisticRegression & penalty & $"l1", "l2"$\\
-		LogisticRegression & penalty & $"elasticnet", "none"$\\
-		LogisticRegression & solver & $"newton-cg", "lbfgs"$\\
-		LogisticRegression & solver & $ "liblinear", "sag", "saga"$\\
+		LogisticRegression & penalty & $"l1", "none"$ \\
+		LogisticRegression & solver & $"liblinear", "saga"$ \\
+		NNet & activation & $"idnetity", "logistic"$\\
+		NNet & solver & $"lbfgs", "sgd"$ \\
+		NNet & early\_stopping & "True"\\
 		\bottomrule
 	\end{tabular}
 	\label{tab:label}
@@ -267,10 +266,10 @@ The following accuracy scored were observed from the baseline model:
 		\toprule
 		 Data Set & Accuracy & Variance\\
 		\midrule
-		Training Data Set & 0.932885282457879\\
-		Validation Data Set & 0.920747003623525 \\
-		Test Data Set & 0.8500510564763176 \\
-		Repeated K-Fold CV & - & - \\
+		Training Data Set & 0.929\\
+		Validation Data Set & 0.913\\
+		Test Data Set & 0.847 \\
+		Repeated 2-Fold CV & 0.896 & 0.002\\
 		\bottomrule
 	\end{tabular}
 	\label{tab:label}
@@ -278,7 +277,7 @@ The following accuracy scored were observed from the baseline model:
 
 The lower accuracy on the test data set in comparison to the training data set in Table 2 is an indication of over-fitting. The more robust estimate of the RCV is closer to the estimate of the test data set. Overall, we conclude that the baseline model has some predictive power. That is, it would outperform a model that allocates all the data to the most represented label of the training dataset (in our case English (en) with 18508 observations). 
 
-The hyper-parameter tuning resulted in the following optimal parameter combination:
+The hyper-parameter tuning resulted in the following optimal parameter combination, which was retrieved using sklearn .best\_params\_.
 
 \begin{table}[hbt]
 	\caption{Optimal Parameters According to Hyper-Parameter Tuning}
@@ -287,10 +286,10 @@ The hyper-parameter tuning resulted in the following optimal parameter combinati
 		\toprule
 		 Parameter Name &  Selected Parameter\\
 		\midrule
-		ngram\_range & - \\
-		analyzer & - \\
-		penalty & - \\
-		solver & - \\
+		ngram\_range & (1,1) \\
+		analyzer & "word" \\
+		penalty & "None" \\
+		solver & "liblinear" \\
 		\bottomrule
 	\end{tabular}
 	\label{tab:label}
@@ -311,10 +310,42 @@ The hyper-parameter tuning resulted in the following optimal parameter combinati
 \paragraph{Most Important Features} Figure 4 shows the ten most important features for the languages English (en), Spanish (es) and Japanese (ja). This table was extracted with the \linebreak show\_weights() function from the ELI5 library. For all of these languages our custom feature (i.e. the length of tweet metric) wasn't among the top ten. We therefore conclude that the mean word length of a tweet is not as important for the classification of these three languages as the bag of words itself.
 
 \subsection{Deep Neural Net Model}
-
+The following accuracy was observed when using the Deep Neural Net model (or non-linear MLP):
+\begin{table}[hbt]
+	\caption{Accuracy Table}
+	\centering
+	\begin{tabular}{llr}
+		\toprule
+		 Data Set & Accuracy & Variance\\
+		\midrule
+		Training Data Set & 0.331 \\
+		Validation Data Set & 0.328\\
+		Test Data Set & 0.656 \\
+		Repeated 2-Fold CV & 0.310 & 0.004\\
+		\bottomrule
+	\end{tabular}
+	\label{tab:label}
+\end{table}\newline
+The major difference in accuracy on the test data set in comparison to the training data set in Table 4 can probably be attributed to coincidence. The hyper-parameter tuning of the Deep Neural Net model resulted in the following optimal parameter combination, which was retrieved using sklearn.best.params (note that the accuracy is really low, therefore the parameters are not expected to be robust):\newline
+\begin{table}[hbt]
+	\caption{Optimal Parameters According to Hyper-Parameter Tuning}
+	\centering
+	\begin{tabular}{llr}
+		\toprule
+		 Parameter Name &  Selected Parameter\\
+		\midrule
+		ngram\_range & (1,1) \\
+		analyzer & "word" \\
+		activation & "identity" \\
+		solver & "lbfgs" \\
+        early\_stopping & True \\
+		\bottomrule
+	\end{tabular}
+	\label{tab:label}
+\end{table}\newline
 
 \section{Conclusion}
-
+Using the same data splits as in Part 1 of this exercise resulted in a significantly longer run time and less accurate results when compared to the linear classification model. This comparison is, of course, not very fair, as we had to drastically cut model-parameters to optimize for computational workload. We believe that model depth (around 150 deep layers) would play a key role when trying to achieve better accuracy. According to our results, we would choose the Logistic Regression Model as it had better performance. However, if we had more computing power, we believe that the Neural Net could have outperformed the Logistic Regression Model. We leave that up to further research.
 \section{Appendix}
 
 \begin{figure*}[ht]\centering % Using \begin{figure*} makes the figure take up the entire width of the page
